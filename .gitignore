@@ -1,0 +1,26 @@
+# Sane defaults taken from Moose modules
+/MANIFEST
+/MANIFEST.bak
+/Makefile
+/Makefile.old
+/blib
+/pm_to_blib
+/inc
+/META.yml
+.*
+
+# install log of files, not needed, always in conflict
+perllocal.pod
+
+# Excluded from the previous pattern, but needed
+!.gitignore
+!.gitmodules
+!.gitattributes
+
+# Swap and backup files created by text editors
+*.swp
+*~
+
+# Development stuff
+cover_db
+
