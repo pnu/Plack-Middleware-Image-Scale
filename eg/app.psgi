@@ -8,6 +8,7 @@ builder {
     # enable 'Cache';
     enable 'ConditionalGET';
     enable 'Image::Scale';
+    enable 'ETag';
     enable 'Static', path => qr{^/images/};
     $app;
 };

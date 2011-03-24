@@ -1,0 +1,55 @@
+NAME
+
+    Plack::Middleware::Image::Scale - Resize jpeg and png images on the fly
+
+SYNOPSIS
+
+    # Note! This module is work in progress.
+    # Currently this is just a proof of concept and
+    # lacks many important safety- and other features.
+
+    builder {
+        # enable 'Cache';
+        enable 'ConditionalGET';
+        enable 'Image::Scale';
+        enable 'Static', path => qr{^/images/};
+        $app;
+    };
+
+DESCRIPTION
+
+    If URI matches pattern .../basename_SPEC.(jpg|png), it's
+    fetched with origial filename of .../basename.(jpg|png|gif),
+    converted and resized with Image::Scale module.
+
+    SPEC is the conversion spec. Currently only supported is
+    WIDTHxHEIGHT, so eg. .../space_40x40.png is scaled to
+    40x40px and converted to png.
+
+    Planned SPEC is to specify clipping etc. features.
+
+    The conversion is done on the fly, but happens only if the
+    response body is actually read. This means that the normal
+    validation check (if-modified-since) can be done before
+    expensive conversion actually happens, for example by activating
+    ConditionalGET middleware.
+
+    This module should be use in conjuction with a cache that stores
+    (and optionally revalidates) the entries.
+
+SEE ALSO
+
+    Image::Scale
+
+AUTHOR
+
+    Panu Ervamaa <pnu@cpan.org>
+
+LICENCE
+
+    Copyright (c) 2011. Panu Ervamaa.
+
+    This program is free software; you can redistribute it and/or
+    modify it under the same terms as Perl itself.
+
+    See http://www.perl.com/perl/misc/Artistic.html
