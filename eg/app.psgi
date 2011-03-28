@@ -9,7 +9,7 @@ builder {
     enable 'ConditionalGET';
     enable 'Image::Scale';
     enable 'ETag';
-    enable 'Static', path => qr{^/images/}, root => 'eg';
+    enable 'Static', path => qr{^/images/}, root => '../t';
     $app;
 };
 

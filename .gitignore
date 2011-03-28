@@ -24,3 +24,4 @@ perllocal.pod
 # Development stuff
 cover_db
 
+Plack-Middleware-Image-Scale-*
