@@ -1,0 +1,67 @@
+=head1 NAME
+
+Plack::Middleware::Image::Scale - Resize jpeg and png images on the fly
+
+=head1 VERSION
+
+version 0.002
+
+=head1 SYNOPSIS
+
+    builder {
+        enable 'ConditionalGET';
+        enable 'Image::Scale';
+        enable 'Static', path => qr{^/images/};
+        $app;
+    };
+
+=head1 DESCRIPTION
+
+This is a trial release. The interface may change.
+
+The conversion is done on the fly, but happens only if the
+response body is actually read. This means that the normal
+validation checks (if-modified-since) can be done before
+expensive conversion actually happens, for example by activating
+ConditionalGET middleware.
+
+This module should be use in conjunction with a cache that stores
+and revalidates the entries.
+
+=head1 ATTRIBUTES
+
+=head2 match_path
+
+=head2 match_spec
+
+=head2 orig_ext
+
+=head2 memory_limit
+
+=head2 jpeg_quality
+
+=head1 METHODS
+
+=head2 call
+
+=head2 fetch_orig
+
+=head2 body_scaler
+
+=head2 image_scale
+
+=head1 SEE ALSO
+
+Image::Scale
+
+=head1 AUTHOR
+
+Panu Ervamaa <pnu@cpan.org>
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2011 by Panu Ervamaa.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
+
