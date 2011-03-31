@@ -1,0 +1,10 @@
+Changelog for Plack::Middleware::Image::Scale
+
+0.002   unreleased
+
+    * Documentation changes.
+
+0.001   Wed Mar 30 21:29:17 2011 +0300
+
+    * Initial release.
+

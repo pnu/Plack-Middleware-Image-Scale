@@ -87,3 +87,4 @@ png
 px
 resized
 revalidates
+RegexpRef
