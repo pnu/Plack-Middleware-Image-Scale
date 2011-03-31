@@ -1,0 +1,179 @@
+NAME
+    Plack::Middleware::Image::Scale - Resize jpeg and png images on the fly
+
+VERSION
+    version 0.003
+
+SYNOPSIS
+        # app.psgi
+        builder {
+            enable 'ConditionalGET';
+            enable 'Image::Scale';
+            enable 'Static', path => qr{^/images/};
+            $app;
+        };
+
+    Start the application with plackup.
+
+    Suppose you have original image in path images/foo.jpg. Now you can do
+    request to an uri like /images/foo_40x40.png to receive a resized and
+    converted version.
+
+    Attributes can be set with named parameters to "enable".
+
+        #...
+        enable 'Image::Scale', jpeg_quality => 60;
+
+    See "ATTRIBUTES" for configuration options.
+
+DESCRIPTION
+    This is a trial release. The interface may change.
+
+    This middleware implements a *content filter* that scales images to
+    requested sizes on the fly. The conversion happens only if the response
+    body is actually used.
+
+    This module should be use in conjunction with a cache that stores and
+    revalidates the entries.
+
+    The format of the output is defined by the width, height, flags and
+    extension, that are extracted from the request URI as defined in "call".
+
+  width
+    Width of the output image. If not defined, it can be anything (to
+    preserve the image aspect ratio).
+
+  height
+    Height of the output image. If not defined, it can be anything (to
+    preserve the image aspect ratio).
+
+  flags
+    Multiple flags can be defined by joining them with "-". See
+    "image_scale".
+
+   fill
+    Image aspect ratio is preserved by scaling the image to fit within the
+    specified size. Extra borders of background color are added to fill the
+    requested image size.
+
+    If fill has a value (for example "fill0xff0000" for red), it specifies
+    the background color to use. Undefined color with png output means
+    transparent background.
+
+   crop
+    Image aspect ratio is preserved by cropping from middle of the image.
+
+   z
+    Zoom the original image N percent bigger. For example "z20" to zoom 20%.
+    The zooming applies only to defined width or height, and does not change
+    the crop size.
+
+ATTRIBUTES
+  match_path
+    Only matching URIs are processed with this module. The match is done
+    against PATH_INFO. Non-matching requests are delegated to the next
+    middleware layer or application. The value must be a RegexpRef, that
+    returns 3 captures. Default value is:
+
+        qr<^(.+)_(.+)\.(png|jpg|jpeg)$>
+
+    First capture is the path and basename of the requested image. The
+    original image will be fetched by "fetch_orig" with this argument. See
+    "call".
+
+    Second capture is the size specification for the requested image. See
+    "match_spec".
+
+    Third capture is the extension for the desired output format. This
+    extension is mapped with Plack::MIME to the Content-Type to be used in
+    the HTTP response. The content type defined the output format used in
+    image processing. Currently only jpeg and png format are supported. See
+    "call".
+
+  match_spec
+    The size specification captured by "match_path" is matched against this.
+    Only matching URIs are processed with this module. The value must be a
+    RegexpRef. Default values is:
+
+        qr<^(\d+)?x(\d+)?(?:-(.+))?$>
+
+    First and second captures are the desired width and height of the
+    resulting image. Both are optional, but note that the "x" between is
+    required.
+
+    Third capture is an optional flag. This value is parsed in the
+    "image_scale" method during the conversion.
+
+  orig_ext
+    ArrayRef of possible original image formats. See "fetch_orig".
+
+  memory_limit
+    Memory limit for the image scaling in bytes, as defined in Image::Scale.
+
+  jpeg_quality
+    JPEG quality, as defined in Image::Scale.
+
+METHODS
+  call
+    Process the request. The original image is fetched from the backend if
+    "match_path" and "match_spec" match as specified. Normally you should
+    use Plack::Middleware::Static or similar backend, that returns a
+    filehandle or otherwise delayed body. Content-Type of the response is
+    set according the request.
+
+    The body of the response is replaced with a streaming body that
+    implements a content filter to do the actual resizing for the original
+    body. This means that if response body gets discarded due to header
+    validation (If-Modified-Since or If-None-Match for example), the body
+    never needs to be processed.
+
+    However, if the original image has been modified, for example the
+    modification date has been changed, the streaming body gets passed to
+    the HTTP server (or another middleware layer that needs to read it in),
+    and the conversion happens.
+
+  fetch_orig
+    The original image is fetched from the next layer or application. The
+    basename of the request URI, as matched by "match_path", and all
+    possible extensions defined in "orig_ext" are used in order, to search
+    for the original image. All other responses except a straight 404 (as
+    returned by Plack::Middleware::Static for example) are considered
+    matches.
+
+  body_scaler
+    Create a content filter callback to do the conversion with specified
+    arguments. The callback binds to a closure with a buffer and the
+    image_scale arguments. The callback will buffer the response and call
+    "image_scale" after an EOF.
+
+  image_scale
+    Do the actual scaling and cropping of the image. Arguments are width,
+    height and flags, as parsed in "call".
+
+    Multiple flags can be specified separated with a "-" (hyphen).
+
+    Flags can be boolean (exists or doesn't exist), or have a numerical
+    value. Flag name and value are separated with a zero-width
+    word-to-number boundary. For example "z20" specifies flag "z" with value
+    20.
+
+    See "DESCRIPTION" for description of various sizes and flags.
+
+CAVEATS
+    The cropping requires Imager. This is a run-time dependency, and
+    fallback is not to crop the image to the desired size.
+
+SEE ALSO
+    Image::Scale
+
+    Imager
+
+AUTHOR
+    Panu Ervamaa <pnu@cpan.org>
+
+COPYRIGHT AND LICENSE
+    This software is copyright (c) 2011 by Panu Ervamaa.
+
+    This is free software; you can redistribute it and/or modify it under
+    the same terms as the Perl 5 programming language system itself.
+

@@ -297,7 +297,7 @@ Start the application with L<plackup|Plack>.
 
 Suppose you have original image in path images/foo.jpg.
 Now you can do request to an uri like /images/foo_40x40.png to
-convert the size and format of the image, on the fly.
+receive a resized and converted version.
 
 Attributes can be set with named parameters to C<enable>.
 
