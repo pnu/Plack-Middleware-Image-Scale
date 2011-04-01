@@ -102,6 +102,39 @@ has jpeg_quality => (
     default => undef
 );
 
+=attr width
+
+Use this to set and override image width.
+
+=cut
+
+has width => (
+    is => 'rw', lazy => 1, isa => 'Maybe[Int]',
+    default => undef
+);
+
+=attr height
+
+Use this to set and override image height.
+
+=cut
+
+has height => (
+    is => 'rw', lazy => 1, isa => 'Maybe[Int]',
+    default => undef
+);
+
+=attr flags
+
+Use this to set and override image processing flags.
+
+=cut
+
+has flags => (
+    is => 'rw', lazy => 1, isa => 'Maybe[HashRef]',
+    default => undef
+);
+
 =method call
 
 Process the request. The original image is fetched from the backend if 
@@ -133,8 +166,10 @@ sub call {
 
     ## Extract image size and flags
     my ($basename,$prop,$ext) = @match_path;
-    my @match_spec = $prop =~ $self->match_spec;
-    return $self->app->($env) unless @match_spec;
+    my @match_spec; if ( $prop ) {
+        @match_spec = $prop =~ $self->match_spec;
+        return $self->app->($env) unless @match_spec;
+    }
 
     my $res = $self->fetch_orig($env,$basename);
     return $self->app->($env) unless $res;
@@ -215,7 +250,13 @@ See L</DESCRIPTION> for description of various sizes and flags.
 
 sub image_scale {
     my ($self, $bufref, $ct, $width, $height, $flags) = @_;
-    my %flag = map { (split /(?<=\w)(?=\d)/, $_, 2)[0,1]; } split '-', $flags || '';
+    my %flag = map { (split /(?<=\w)(?=\d)/, $_, 2)[0,1]; }
+        split '-', $flags || '';
+
+    $width  = $self->width      if defined $self->width;
+    $height = $self->height     if defined $self->height;
+    %flag   = %{ $self->flags } if defined $self->flags;
+
     my $owidth  = $width;
     my $oheight = $height;
 
@@ -279,7 +320,7 @@ sub image_scale {
 
 =head1 SYNOPSIS
 
-    # app.psgi
+    ## example1.psgi
     
     builder {
         enable 'ConditionalGET';
@@ -288,35 +329,56 @@ sub image_scale {
         $app;
     };
 
+A request to /images/foo_40x40.png will use images/foo.(png|jpg|gif) as
+original, scale it to 40x40 px size and convert to PNG format.
+
+    ## example2.psgi
+
+    my $thumber = builder {
+        enable 'ConditionalGET';
+        enable 'Image::Scale',
+            width => 200, height => 100,
+            flags => { fill => 'ff00ff' };
+        Plack::App::File->new( root => 'images' );
+    };
+
+    builder {
+        mount '/thumbs' => $thumber;
+        mount '/' => $app;
+    };
+
+A request to /thumbs/foo_x.png will use images/foo.(png|jpg|gif) as original,
+scale it small enough to fit 200x100 px size, fill extra borders (top/down or
+left/right, depending on the original image aspect ratio) with cyan
+background, and convert to PNG format. Also clipping is available, see below.
+
 =head1 DESCRIPTION
 
-Suppose that you have images/foo.jpg in your filesystem. With above setup you
-can make request to /images/foo_40x40.png, to receive it as scaled to 40x40 and
-converted to png format. Scaling is done with L<Image::Scale> module.
+Scale and convert images to the requested format on the fly. By default the
+size and other scaling parameters are extracted from the request URI.  Scaling
+is done with L<Image::Scale>.
 
-The converted and/or scaled version is not stored. This middleware implements
-a PSGI L<content filter|Plack::Middleware/RESPONSE_CALLBACK> to do the
-processing.  The response headers (like Last-Modified or ETag) will be from
-the original image, but the image processing happens only if the body is
-actually used.
+The original image is not modified or even accessed directly by this module.
+The converted image is not cached, but the request can be validated
+(If-Modified-Since) against original image without doing the image processing,
+or even reading the file content from the filesystem. This middleware should
+be used together a cache proxy, that caches the converted images for all
+clients, and implements content validation.
 
-This middleware doesn't access the filesystem at all. The original image is
-fetched from next middleware layer or application. The image requests should
-return a filehandle body for optimal results. You can use
-L<Plack::Middleware::Static>, or C<Catalyst::Plugin::Static::Simple> for
-example.
-
-This means that the response can be validated (with If-Modified-Since or
-If-None-Match) against original image, without doing the expensive image
-processing, or even reading the file content at all. This module should be
-used with a proxy cache that implements validation.
+The response headers (like Last-Modified or ETag) are from the original image,
+but body is replaced with a PSGI L<content
+filter|Plack::Middleware/RESPONSE_CALLBACK> to do the image processing.  The
+original image is fetched from next middleware layer or application with a
+normal PSGI request. You can use L<Plack::Middleware::Static>, or
+L<Catalyst::Plugin::Static::Simple> for example.
 
 See below for various size/format specifications that can be used
-in the request URI. See L</ATTRIBUTES> for common configuration options
+in the request URI, and L</ATTRIBUTES> for common configuration options
 that you can give as named parameters to the C<enable>.
 
-With default configuration, the format of the URI is
-I<basename>_I<width>xI<height>-I<flags>.I<ext>
+If width or height are defined in the module construction (see L</example2.psgi>
+above), the module will match any URI. Otherwise the match is done against
+default pattern "I<basename>_I<width>xI<height>-I<flags>.I<ext>".
 
 Only I<basename>, C<x> and I<ext> are required. If URI doesn't match, the
 request is passed through. Any number of flags can be specified, separated

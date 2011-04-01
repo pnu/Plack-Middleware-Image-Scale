@@ -2,6 +2,10 @@ Changelog for Plack::Middleware::Image::Scale
 
 {{$NEXT}}
 
+    * Override width, height and flags with optional module attributes.
+
+0.003     2011-04-01 21:59:11 Europe/Helsinki
+
     * Documentation changes. First non-trial release.
 
 0.002     2011-03-31 09:52:21 Europe/Helsinki

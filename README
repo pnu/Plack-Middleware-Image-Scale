@@ -2,10 +2,10 @@ NAME
     Plack::Middleware::Image::Scale - Resize jpeg and png images on the fly
 
 VERSION
-    version 0.003
+    version 0.004
 
 SYNOPSIS
-        # app.psgi
+        ## example1.psgi
     
         builder {
             enable 'ConditionalGET';
@@ -14,34 +14,57 @@ SYNOPSIS
             $app;
         };
 
+    A request to /images/foo_40x40.png will use images/foo.(png|jpg|gif) as
+    original, scale it to 40x40 px size and convert to PNG format.
+
+        ## example2.psgi
+
+        my $thumber = builder {
+            enable 'ConditionalGET';
+            enable 'Image::Scale',
+                width => 200, height => 100,
+                flags => { fill => 'ff00ff' };
+            Plack::App::File->new( root => 'images' );
+        };
+
+        builder {
+            mount '/thumbs' => $thumber;
+            mount '/' => $app;
+        };
+
+    A request to /thumbs/foo_x.png will use images/foo.(png|jpg|gif) as
+    original, scale it small enough to fit 200x100 px size, fill extra
+    borders (top/down or left/right, depending on the original image aspect
+    ratio) with cyan background, and convert to PNG format. Also clipping is
+    available, see below.
+
 DESCRIPTION
-    Suppose that you have images/foo.jpg in your filesystem. With above
-    setup you can make request to /images/foo_40x40.png, to receive it as
-    scaled to 40x40 and converted to png format. Scaling is done with
-    Image::Scale module.
+    Scale and convert images to the requested format on the fly. By default
+    the size and other scaling parameters are extracted from the request
+    URI. Scaling is done with Image::Scale.
 
-    The converted and/or scaled version is not stored. This middleware
-    implements a PSGI content filter to do the processing. The response
-    headers (like Last-Modified or ETag) will be from the original image,
-    but the image processing happens only if the body is actually used.
+    The original image is not modified or even accessed directly by this
+    module. The converted image is not cached, but the request can be
+    validated (If-Modified-Since) against original image without doing the
+    image processing, or even reading the file content from the filesystem.
+    This middleware should be used together a cache proxy, that caches the
+    converted images for all clients, and implements content validation.
 
-    This middleware doesn't access the filesystem at all. The original image
-    is fetched from next middleware layer or application. The image requests
-    should return a filehandle body for optimal results. You can use
-    Plack::Middleware::Static, or "Catalyst::Plugin::Static::Simple" for
+    The response headers (like Last-Modified or ETag) are from the original
+    image, but body is replaced with a PSGI content filter to do the image
+    processing. The original image is fetched from next middleware layer or
+    application with a normal PSGI request. You can use
+    Plack::Middleware::Static, or Catalyst::Plugin::Static::Simple for
     example.
 
-    This means that the response can be validated (with If-Modified-Since or
-    If-None-Match) against original image, without doing the expensive image
-    processing, or even reading the file content at all. This module should
-    be used with a proxy cache that implements validation.
-
     See below for various size/format specifications that can be used in the
-    request URI. See "ATTRIBUTES" for common configuration options that you
+    request URI, and "ATTRIBUTES" for common configuration options that you
     can give as named parameters to the "enable".
 
-    With default configuration, the format of the URI is
-    *basename*_*width*x*height*-*flags*.*ext*
+    If width or height are defined in the module construction (see
+    "example2.psgi" above), the module will match any URI. Otherwise the
+    match is done against default pattern
+    "*basename*_*width*x*height*-*flags*.*ext*".
 
     Only *basename*, "x" and *ext* are required. If URI doesn't match, the
     request is passed through. Any number of flags can be specified,
@@ -132,6 +155,15 @@ ATTRIBUTES
 
   jpeg_quality
     JPEG quality, as defined in Image::Scale.
+
+  width
+    Use this to set and override image width.
+
+  height
+    Use this to set and override image height.
+
+  flags
+    Use this to set and override image processing flags.
 
 METHODS
   call
