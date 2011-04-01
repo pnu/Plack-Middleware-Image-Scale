@@ -209,12 +209,6 @@ sub body_scaler {
 Do the actual scaling and cropping of the image.
 Arguments are width, height and flags, as parsed in L</call>.
 
-Multiple flags can be specified separated with a C<-> (hyphen).
-
-Flags can be boolean (exists or doesn't exist), or have a numerical
-value. Flag name and value are separated with a zero-width word-to-number
-boundary. For example C<z20> specifies flag C<z> with value C<20>.
-
 See L</DESCRIPTION> for description of various sizes and flags.
 
 =cut
@@ -286,6 +280,7 @@ sub image_scale {
 =head1 SYNOPSIS
 
     # app.psgi
+    
     builder {
         enable 'ConditionalGET';
         enable 'Image::Scale';
@@ -293,32 +288,46 @@ sub image_scale {
         $app;
     };
 
-Start the application with L<plackup|Plack>.
-
-Suppose you have original image in path images/foo.jpg.
-Now you can do request to an uri like /images/foo_40x40.png to
-receive a resized and converted version.
-
-Attributes can be set with named parameters to C<enable>.
-
-    #...
-    enable 'Image::Scale', jpeg_quality => 60;
-
-See L</ATTRIBUTES> for configuration options.
-
 =head1 DESCRIPTION
 
-B<This is a trial release. The interface may change.>
+Suppose that you have images/foo.jpg in your filesystem. With above setup you
+can make request to /images/foo_40x40.png, to receive it as scaled to 40x40 and
+converted to png format. Scaling is done with L<Image::Scale> module.
 
-This middleware implements a I<content filter> that scales images to
-requested sizes on the fly. The conversion happens only if the response
-body is actually used.
+The converted and/or scaled version is not stored. This middleware implements
+a PSGI L<content filter|Plack::Middleware/RESPONSE_CALLBACK> to do the
+processing.  The response headers (like Last-Modified or ETag) will be from
+the original image, but the image processing happens only if the body is
+actually used.
 
-This module should be use in conjunction with a cache that stores
-and revalidates the entries.
+This middleware doesn't access the filesystem at all. The original image is
+fetched from next middleware layer or application. The image requests should
+return a filehandle body for optimal results. You can use
+L<Plack::Middleware::Static>, or C<Catalyst::Plugin::Static::Simple> for
+example.
 
-The format of the output is defined by the width, height, flags and extension,
-that are extracted from the request URI as defined in L</call>.
+This means that the response can be validated (with If-Modified-Since or
+If-None-Match) against original image, without doing the expensive image
+processing, or even reading the file content at all. This module should be
+used with a proxy cache that implements validation.
+
+See below for various size/format specifications that can be used
+in the request URI. See L</ATTRIBUTES> for common configuration options
+that you can give as named parameters to the C<enable>.
+
+With default configuration, the format of the URI is
+I<basename>_I<width>xI<height>-I<flags>.I<ext>
+
+Only I<basename>, C<x> and I<ext> are required. If URI doesn't match, the
+request is passed through. Any number of flags can be specified, separated
+with C<->.  Flags can be boolean (exists or doesn't exist), or have a
+numerical value. Flag name and value are separated with a zero-width word to
+number boundary. For example C<z20> specifies flag C<z> with value C<20>.
+
+=head2 basename
+
+Original image is requested from URI I<basename>.I<orig_ext>, where
+I<orig_ext> is list of filename extensions. See L</orig_ext>.
 
 =head2 width
 
@@ -330,30 +339,34 @@ Width of the output image. If not defined, it can be anything
 Height of the output image. If not defined, it can be anything
 (to preserve the image aspect ratio).
 
-=head2 flags
+=head2 flags: fill
 
-Multiple flags can be defined by joining them with C<->.
-See L</image_scale>.
+Image aspect ratio is preserved by scaling the image to fit within the
+specified size. This means scaling to the smaller or the two possible sizes
+that preserve aspect ratio.  Extra borders of background color are added to
+fill the requested image size exactly.
 
-=head3 fill
+    /images/foo_400x200-fill.png
 
-Image aspect ratio is preserved by scaling the image to fit
-within the specified size. Extra borders of background color
-are added to fill the requested image size.
+If fill has a value, it specifies the background color to use. Undefined color
+with png output means transparent background.
+    
+    /images/foo_40x20-fill0xff0000.png  ## red background
 
-If fill has a value (for example C<fill0xff0000> for red), it specifies the
-background color to use. Undefined color with png output means transparent
-background.
+=head2 flags: crop
 
-=head3 crop
+Image aspect ratio is preserved by scaling and cropping from middle of the
+image. This means scaling to the bigger of the two possible sizes that
+preserve the aspect ratio, and then cropping to the exact size.
 
-Image aspect ratio is preserved by cropping from middle of the image.
+=head2 flags: z
 
-=head3 z
-
-Zoom the original image N percent bigger. For example C<z20> to zoom 20%.
-The zooming applies only to defined width or height, and does not change
-the crop size.
+Zoom the specified width or height N percent bigger. For example C<z20> to
+zoom 20%. The zooming applies only to width and/or height defined in the URI,
+and does not change the crop size. Image is always cropped to the specified
+pixel width, height or both.
+    
+    /images/foo_40x-crop-z20.png
 
 =head1 CAVEATS
 
@@ -365,5 +378,7 @@ fallback is not to crop the image to the desired size.
 L<Image::Scale>
 
 L<Imager>
+
+L<Plack::App::ImageMagick>
 
 =cut

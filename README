@@ -6,6 +6,7 @@ VERSION
 
 SYNOPSIS
         # app.psgi
+    
         builder {
             enable 'ConditionalGET';
             enable 'Image::Scale';
@@ -13,31 +14,45 @@ SYNOPSIS
             $app;
         };
 
-    Start the application with plackup.
-
-    Suppose you have original image in path images/foo.jpg. Now you can do
-    request to an uri like /images/foo_40x40.png to receive a resized and
-    converted version.
-
-    Attributes can be set with named parameters to "enable".
-
-        #...
-        enable 'Image::Scale', jpeg_quality => 60;
-
-    See "ATTRIBUTES" for configuration options.
-
 DESCRIPTION
-    This is a trial release. The interface may change.
+    Suppose that you have images/foo.jpg in your filesystem. With above
+    setup you can make request to /images/foo_40x40.png, to receive it as
+    scaled to 40x40 and converted to png format. Scaling is done with
+    Image::Scale module.
 
-    This middleware implements a *content filter* that scales images to
-    requested sizes on the fly. The conversion happens only if the response
-    body is actually used.
+    The converted and/or scaled version is not stored. This middleware
+    implements a PSGI content filter to do the processing. The response
+    headers (like Last-Modified or ETag) will be from the original image,
+    but the image processing happens only if the body is actually used.
 
-    This module should be use in conjunction with a cache that stores and
-    revalidates the entries.
+    This middleware doesn't access the filesystem at all. The original image
+    is fetched from next middleware layer or application. The image requests
+    should return a filehandle body for optimal results. You can use
+    Plack::Middleware::Static, or "Catalyst::Plugin::Static::Simple" for
+    example.
 
-    The format of the output is defined by the width, height, flags and
-    extension, that are extracted from the request URI as defined in "call".
+    This means that the response can be validated (with If-Modified-Since or
+    If-None-Match) against original image, without doing the expensive image
+    processing, or even reading the file content at all. This module should
+    be used with a proxy cache that implements validation.
+
+    See below for various size/format specifications that can be used in the
+    request URI. See "ATTRIBUTES" for common configuration options that you
+    can give as named parameters to the "enable".
+
+    With default configuration, the format of the URI is
+    *basename*_*width*x*height*-*flags*.*ext*
+
+    Only *basename*, "x" and *ext* are required. If URI doesn't match, the
+    request is passed through. Any number of flags can be specified,
+    separated with "-". Flags can be boolean (exists or doesn't exist), or
+    have a numerical value. Flag name and value are separated with a
+    zero-width word to number boundary. For example "z20" specifies flag "z"
+    with value 20.
+
+  basename
+    Original image is requested from URI *basename*.*orig_ext*, where
+    *orig_ext* is list of filename extensions. See "orig_ext".
 
   width
     Width of the output image. If not defined, it can be anything (to
@@ -47,26 +62,31 @@ DESCRIPTION
     Height of the output image. If not defined, it can be anything (to
     preserve the image aspect ratio).
 
-  flags
-    Multiple flags can be defined by joining them with "-". See
-    "image_scale".
-
-   fill
+  flags: fill
     Image aspect ratio is preserved by scaling the image to fit within the
-    specified size. Extra borders of background color are added to fill the
-    requested image size.
+    specified size. This means scaling to the smaller or the two possible
+    sizes that preserve aspect ratio. Extra borders of background color are
+    added to fill the requested image size exactly.
 
-    If fill has a value (for example "fill0xff0000" for red), it specifies
-    the background color to use. Undefined color with png output means
-    transparent background.
+        /images/foo_400x200-fill.png
 
-   crop
-    Image aspect ratio is preserved by cropping from middle of the image.
+    If fill has a value, it specifies the background color to use. Undefined
+    color with png output means transparent background.
 
-   z
-    Zoom the original image N percent bigger. For example "z20" to zoom 20%.
-    The zooming applies only to defined width or height, and does not change
-    the crop size.
+        /images/foo_40x20-fill0xff0000.png  ## red background
+
+  flags: crop
+    Image aspect ratio is preserved by scaling and cropping from middle of
+    the image. This means scaling to the bigger of the two possible sizes
+    that preserve the aspect ratio, and then cropping to the exact size.
+
+  flags: z
+    Zoom the specified width or height N percent bigger. For example "z20"
+    to zoom 20%. The zooming applies only to width and/or height defined in
+    the URI, and does not change the crop size. Image is always cropped to
+    the specified pixel width, height or both.
+
+        /images/foo_40x-crop-z20.png
 
 ATTRIBUTES
   match_path
@@ -150,13 +170,6 @@ METHODS
     Do the actual scaling and cropping of the image. Arguments are width,
     height and flags, as parsed in "call".
 
-    Multiple flags can be specified separated with a "-" (hyphen).
-
-    Flags can be boolean (exists or doesn't exist), or have a numerical
-    value. Flag name and value are separated with a zero-width
-    word-to-number boundary. For example "z20" specifies flag "z" with value
-    20.
-
     See "DESCRIPTION" for description of various sizes and flags.
 
 CAVEATS
@@ -167,6 +180,8 @@ SEE ALSO
     Image::Scale
 
     Imager
+
+    Plack::App::ImageMagick
 
 AUTHOR
     Panu Ervamaa <pnu@cpan.org>

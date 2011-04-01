@@ -88,3 +88,4 @@ px
 resized
 revalidates
 RegexpRef
+ETag
