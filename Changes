@@ -2,7 +2,7 @@ Changelog for Plack::Middleware::Image::Scale
 
 {{$NEXT}}
 
-    *
+    * Documentation changes. First non-trial release.
 
 0.002     2011-03-31 09:52:21 Europe/Helsinki
 
