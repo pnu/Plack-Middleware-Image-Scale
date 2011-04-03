@@ -13,58 +13,42 @@ use Carp;
 
 extends 'Plack::Middleware';
 
-=attr match_path
+=attr match
 
 Only matching URIs are processed with this module. The match is done against
-L<PATH_INFO|PSGI/The_Environment>.
-Non-matching requests are delegated to the next middleware layer or
-application. The value must be a
-L<RegexpRef|Moose::Util::TypeConstraints/Default_Type_Constraints>,
-that returns 3 captures. Default value is:
+L<PATH_INFO|PSGI/The_Environment>.  Non-matching requests are delegated to the
+next middleware layer or application.
 
-    qr<^(.+)_(.+)\.(png|jpg|jpeg)$>
-
-First capture is the path and basename of the requested image.
-The original image will be fetched by L</fetch_orig> with this argument.
-See L</call>.
-
-Second capture is the size specification for the requested image.
-See L</match_spec>.
-
-Third capture is the extension for the desired output format. This extension
-is mapped with L<Plack::MIME> to the Content-Type to be used in the HTTP
-response. The content type defined the output format used in image processing.
-Currently only jpeg and png format are supported.
-See L</call>.
-
-=cut
-
-has match_path => (
-    is => 'rw', lazy => 1, isa => 'RegexpRef',
-    default => sub { qr<^(.+)_(.+)\.(png|jpg|jpeg)$> }
-);
-
-=attr match_spec
-
-The size specification captured by L</match_path> is matched against this.
-Only matching URIs are processed with this module. The value must be a
-L<RegexpRef|Moose::Util::TypeConstraints/Default_Type_Constraints>.
-Default values is:
-
-    qr<^(\d+)?x(\d+)?(?:-(.+))?$>
+Must be a L<RegexpRef|Moose::Util::TypeConstraints/Default_Type_Constraints>,
+or L<CodeRef|Moose::Util::TypeConstraints/Default_Type_Constraints>, that may
+return 3 values (regexp captures or normal return values). The request path is
+passed to the CodeRef in C<$_>, and can be rewritten during match. This is used
+to strip off the image parameters from the URI. Rewritten URI is used for
+fetching the original image.
 
 First and second captures are the desired width and height of the
-resulting image. Both are optional, but note that the "x" between is required.
-
-Third capture is an optional flag. This value is parsed in the
-L</image_scale> method during the conversion.
+resulting image. Third capture is an optional flag string. See
+L</DESCRIPTION>.
 
 =cut
 
-has match_spec => (
-    is => 'rw', lazy => 1, isa => 'RegexpRef',
-    default => sub { qr<^(\d+)?x(\d+)?(?:-(.+))?$> }
+has path => (
+    is => 'rw', lazy => 1, isa => 'RegexpRef|CodeRef',
+    builder => '_path_builder'
 );
+
+sub _path_builder { sub {
+    s{
+        \A
+        (.+)                    # $1 basename
+        _((\d+))?               # $3 width
+        x((\d+))?               # $5 height
+        (-( .+))?               # $7 flags
+        (?=\.(png|jpg|jpeg)\z)  # look-ahead: .<ext>\z
+    }{$1}x || return;
+
+    return $3, $5, $7;
+} }
 
 =attr orig_ext
 
@@ -137,11 +121,11 @@ has flags => (
 
 =method call
 
-Process the request. The original image is fetched from the backend if 
-L</match_path> and L</match_spec> match as specified. Normally you should
-use L<Plack::Middleware::Static> or similar backend, that
-returns a filehandle or otherwise delayed body. Content-Type of the response
-is set according the request.
+Process the request. The original image is fetched from the backend if
+L</path> match as specified. Normally you should use
+L<Plack::Middleware::Static> or similar backend, that returns a filehandle or
+otherwise delayed body. Content-Type of the response is set according the
+request.
 
 The body of the response is replaced with a
 L<streaming body|PSGI/Delayed_Reponse_and_Streaming_Body>
@@ -160,18 +144,24 @@ happens.
 sub call {
     my ($self,$env) = @_;
 
-    ## Check that uri matches and extract the pieces, or pass thru
-    my @match_path = $env->{PATH_INFO} =~ $self->match_path;
-    return $self->app->($env) unless @match_path;
+    my $path = $env->{PATH_INFO};
+    my $path_match = $self->path;
+    my @match;
 
-    ## Extract image size and flags
-    my ($basename,$prop,$ext) = @match_path;
-    my @match_spec; if ( $prop ) {
-        @match_spec = $prop =~ $self->match_spec;
-        return $self->app->($env) unless @match_spec;
+    ## Check that uri matches and extract the pieces, or pass thru
+    ## Topicalize $path (make $_ an alias to it) for callback.
+    for ( $path ) {
+        @match = 'CODE' eq ref $path_match ? $path_match->($_) :
+                       defined $path_match ? $_ =~ $path_match : undef;
     }
 
-    my $res = $self->fetch_orig($env,$basename);
+    return $self->app->($env) unless @match;
+    my ($width,$height,$flags) = @match;
+
+    ## Remove and extract the file extension
+    $path =~ s/\.(\w+)$//; my $ext = $1;
+
+    my $res = $self->fetch_orig($env,$path);
     return $self->app->($env) unless $res;
 
     ## Post-process the response with a body filter
@@ -179,18 +169,16 @@ sub call {
         my $res = shift;
         my $ct = Plack::MIME->mime_type(".$ext");
         Plack::Util::header_set( $res->[1], 'Content-Type', $ct );
-        return $self->body_scaler( $ct, @match_spec );
+        return $self->body_scaler( $ct, $width, $height, $flags );
     });
 }
 
 =method fetch_orig
 
-The original image is fetched from the next layer or application.
-The basename of the request URI, as matched by L</match_path>, and all
-possible extensions defined in L</orig_ext> are used in order, to search
-for the original image. All other responses except a straight 404 (as
-returned by L<Plack::Middleware::Static> for example) are considered
-matches.
+The original image is fetched from the next layer or application.  All
+possible extensions defined in L</orig_ext> are used in order, to search for
+the original image. All other responses except a straight 404 (as returned by
+L<Plack::Middleware::Static> for example) are considered matches.
 
 =cut
 
@@ -376,15 +364,14 @@ See below for various size/format specifications that can be used
 in the request URI, and L</ATTRIBUTES> for common configuration options
 that you can give as named parameters to the C<enable>.
 
-If width or height are defined in the module construction (see L</example2.psgi>
-above), the module will match any URI. Otherwise the match is done against
-default pattern "I<basename>_I<width>xI<height>-I<flags>.I<ext>".
+The default match pattern for URI is
+"I<...>I<basename>_I<width>xI<height>-I<flags>.I<ext>".
 
-Only I<basename>, C<x> and I<ext> are required. If URI doesn't match, the
-request is passed through. Any number of flags can be specified, separated
-with C<->.  Flags can be boolean (exists or doesn't exist), or have a
-numerical value. Flag name and value are separated with a zero-width word to
-number boundary. For example C<z20> specifies flag C<z> with value C<20>.
+If URI doesn't match, the request is passed through. Any number of flags can
+be specified, separated with C<->.  Flags can be boolean (exists or doesn't
+exist), or have a numerical value. Flag name and value are separated with a
+zero-width word to number boundary. For example C<z20> specifies flag C<z>
+with value C<20>.
 
 =head2 basename
 

@@ -3,6 +3,7 @@ Changelog for Plack::Middleware::Image::Scale
 {{$NEXT}}
 
     * Override width, height and flags with optional module attributes.
+    * Easier to extend: "match_*" replaced with "path" Regexp/CodeRef.
 
 0.003     2011-04-01 21:59:11 Europe/Helsinki
 
