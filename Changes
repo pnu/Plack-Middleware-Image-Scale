@@ -2,6 +2,10 @@ Changelog for Plack::Middleware::Image::Scale
 
 {{$NEXT}}
 
+    * Add example for using CodeRef for path parameter.
+
+0.004     2011-04-04 00:51:31 Europe/Helsinki
+
     * Override width, height and flags with optional module attributes.
     * Easier to extend: "match_*" replaced with "path" Regexp/CodeRef.
 

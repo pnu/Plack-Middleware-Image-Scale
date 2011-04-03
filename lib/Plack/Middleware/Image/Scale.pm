@@ -238,8 +238,10 @@ See L</DESCRIPTION> for description of various sizes and flags.
 
 sub image_scale {
     my ($self, $bufref, $ct, $width, $height, $flags) = @_;
-    my %flag = map { (split /(?<=\w)(?=\d)/, $_, 2)[0,1]; }
-        split '-', $flags || '';
+
+    ## $flags can be a HashRef, or it's parsed as a string
+    my %flag = 'HASH' eq ref $flags ? %{ $flags } :
+    map { (split /(?<=\w)(?=\d)/, $_, 2)[0,1]; } split '-', $flags || '';
 
     $width  = $self->width      if defined $self->width;
     $height = $self->height     if defined $self->height;
@@ -339,6 +341,27 @@ A request to /thumbs/foo_x.png will use images/foo.(png|jpg|gif) as original,
 scale it small enough to fit 200x100 px size, fill extra borders (top/down or
 left/right, depending on the original image aspect ratio) with cyan
 background, and convert to PNG format. Also clipping is available, see below.
+
+    ## example3.psgi
+
+    my $imgsizes = {
+        thumbred => [ 50, 100, { fill => 'ff0000' } ],
+        medium   => [ 200, 100, 'crop' ],
+        big      => [ 300, 100, 'crop' ],
+    };
+
+    builder {
+        enable 'ConditionalGET';
+        enable 'Image::Scale', path => sub {
+            s{^(.+)_(.+)\.(jpg|png)$}{$1.$3} || return;
+            return @{ $imgsizes->{$2} || [] };
+        };
+        enable 'Static', path => qr{^/images/};
+        $app;
+    };
+
+A request to /images/foo_small.png will use images/foo.(png|jpg|gif) as
+original. The size and flags is taken from the table.
 
 =head1 DESCRIPTION
 

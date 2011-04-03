@@ -2,7 +2,7 @@ NAME
     Plack::Middleware::Image::Scale - Resize jpeg and png images on the fly
 
 VERSION
-    version 0.004
+    version 0.005
 
 SYNOPSIS
         ## example1.psgi
@@ -37,6 +37,27 @@ SYNOPSIS
     borders (top/down or left/right, depending on the original image aspect
     ratio) with cyan background, and convert to PNG format. Also clipping is
     available, see below.
+
+        ## example3.psgi
+
+        my $imgsizes = {
+            thumbred => [ 50, 100, { fill => 'ff0000' } ],
+            medium   => [ 200, 100, 'crop' ],
+            big      => [ 300, 100, 'crop' ],
+        };
+
+        builder {
+            enable 'ConditionalGET';
+            enable 'Image::Scale', path => sub {
+                s{^(.+)_(.+)\.(jpg|png)$}{$1.$3} || return;
+                return @{ $imgsizes->{$2} || [] };
+            };
+            enable 'Static', path => qr{^/images/};
+            $app;
+        };
+
+    A request to /images/foo_small.png will use images/foo.(png|jpg|gif) as
+    original. The size and flags is taken from the table.
 
 DESCRIPTION
     Scale and convert images to the requested format on the fly. By default
