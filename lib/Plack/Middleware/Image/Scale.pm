@@ -24,11 +24,11 @@ or L<CodeRef|Moose::Util::TypeConstraints/Default_Type_Constraints>, that may
 return 3 values (regexp captures or normal return values). The request path is
 passed to the CodeRef in C<$_>, and can be rewritten during match. This is used
 to strip off the image parameters from the URI. Rewritten URI is used for
-fetching the original image.
+fetching the original image. Empty array means no match.
 
 First and second captures are the desired width and height of the
 resulting image. Third capture is an optional flag string. See
-L</DESCRIPTION>.
+L</CONFIGURATION>.
 
 =cut
 
@@ -119,28 +119,6 @@ has flags => (
     default => undef
 );
 
-=method call
-
-Process the request. The original image is fetched from the backend if
-L</path> match as specified. Normally you should use
-L<Plack::Middleware::Static> or similar backend, that returns a filehandle or
-otherwise delayed body. Content-Type of the response is set according the
-request.
-
-The body of the response is replaced with a
-L<streaming body|PSGI/Delayed_Reponse_and_Streaming_Body>
-that implements a content filter to do the actual resizing for the original
-body. This means that if response body gets discarded due to header validation
-(If-Modified-Since or If-None-Match for example), the body never needs to be
-processed.
-
-However, if the original image has been modified, for example the modification
-date has been changed, the streaming body gets passed to the HTTP server
-(or another middleware layer that needs to read it in), and the conversion
-happens.
-
-=cut
-
 sub call {
     my ($self,$env) = @_;
 
@@ -175,8 +153,11 @@ sub call {
 
 =method fetch_orig
 
+Call parameters: PSGI request HashRef $env, Str $basename.
+Return value: PSGI response ArrayRef $res.
+
 The original image is fetched from the next layer or application.  All
-possible extensions defined in L</orig_ext> are used in order, to search for
+possible extensions defined in L</orig_ext> are tried in order, to search for
 the original image. All other responses except a straight 404 (as returned by
 L<Plack::Middleware::Static> for example) are considered matches.
 
@@ -195,11 +176,14 @@ sub fetch_orig {
 
 =method body_scaler
 
-Create a content filter callback to do the conversion with specified arguments.
-The callback binds to a closure with a buffer and the image_scale arguments.
-The callback will buffer the response and call L</image_scale> after an EOF.
+Call parameters: @args. Return value: CodeRef $cb.
+
+Create the content filter callback and return a CodeRef to it. The filter will
+buffer the data and call L</image_scale> with parameters C<@args> when EOF is
+received, and finally return the converted data.
 
 =cut
+
 
 sub body_scaler {
     my $self = shift;
@@ -229,10 +213,12 @@ sub body_scaler {
 
 =method image_scale
 
-Do the actual scaling and cropping of the image.
-Arguments are width, height and flags, as parsed in L</call>.
+Call parameters: ScalarRef $buffer, String $ct, Int $width, Int $height, HashRef|Str $flags.
+Return value: $imagedata
 
-See L</DESCRIPTION> for description of various sizes and flags.
+Read image from $buffer, scale it to $width x $height and
+return as content-type $ct. Optional $flags to specify image processing
+options like background fills or cropping. $flags can be a HashRef or 
 
 =cut
 
@@ -340,7 +326,8 @@ original, scale it to 40x40 px size and convert to PNG format.
 A request to /thumbs/foo_x.png will use images/foo.(png|jpg|gif) as original,
 scale it small enough to fit 200x100 px size, fill extra borders (top/down or
 left/right, depending on the original image aspect ratio) with cyan
-background, and convert to PNG format. Also clipping is available, see below.
+background, and convert to PNG format. Also clipping is available, see
+L</CONFIGURATION>.
 
     ## example3.psgi
 
@@ -383,9 +370,11 @@ original image is fetched from next middleware layer or application with a
 normal PSGI request. You can use L<Plack::Middleware::Static>, or
 L<Catalyst::Plugin::Static::Simple> for example.
 
-See below for various size/format specifications that can be used
+See L</CONFIGURATION> for various size/format specifications that can be used
 in the request URI, and L</ATTRIBUTES> for common configuration options
 that you can give as named parameters to the C<enable>.
+
+=head1 CONFIGURATION
 
 The default match pattern for URI is
 "I<...>I<basename>_I<width>xI<height>-I<flags>.I<ext>".
@@ -423,8 +412,6 @@ fill the requested image size exactly.
 If fill has a value, it specifies the background color to use. Undefined color
 with png output means transparent background.
     
-    /images/foo_40x20-fill0xff0000.png  ## red background
-
 =head2 flags: crop
 
 Image aspect ratio is preserved by scaling and cropping from middle of the

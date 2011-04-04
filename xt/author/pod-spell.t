@@ -89,3 +89,5 @@ resized
 revalidates
 RegexpRef
 ETag
+ScalarRef
+Str
