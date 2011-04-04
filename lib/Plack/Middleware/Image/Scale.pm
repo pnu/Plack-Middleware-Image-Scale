@@ -331,24 +331,54 @@ L</CONFIGURATION>.
 
     ## example3.psgi
 
-    my $imgsizes = {
-        thumbred => [ 50, 100, { fill => 'ff0000' } ],
-        medium   => [ 200, 100, 'crop' ],
-        big      => [ 300, 100, 'crop' ],
-    };
+    my %imagesize = Config::General->new('imagesize.conf')->getall;
 
     builder {
         enable 'ConditionalGET';
         enable 'Image::Scale', path => sub {
             s{^(.+)_(.+)\.(jpg|png)$}{$1.$3} || return;
-            return @{ $imgsizes->{$2} || [] };
+            ( my %entry = %{$imagesize{$2} || {}} ) || return;
+            return delete @entry{'width','height'}, \%entry;
         };
         enable 'Static', path => qr{^/images/};
         $app;
     };
 
-A request to /images/foo_small.png will use images/foo.(png|jpg|gif) as
-original. The size and flags is taken from the table.
+A request to /images/foo_medium.png will use images/foo.(png|jpg|gif) as
+original. The size and flags are taken from the configuration file as
+parsed by Config::General.
+
+    ## imagesize.conf
+
+    <medium>
+        width   200
+        height  100
+        crop
+    </medium>
+    <big>
+        width   300
+        height  100
+        crop
+    </big>
+    <thumbred>
+        width   50
+        height  100
+        fill    ff0000
+    </thumbred>
+
+But you might want to use a simple config format, for example:
+
+    $imagesize = {
+        small  => [  10,  10 ],
+        medium => [  50,  50 ],
+        big    => [ 100, 100, 'crop']
+    };
+
+    # [...]
+    enable 'Image::Scale', path => sub {
+        s{^(.+)_(.+)e.(jpg|png)$}{$1.$3} || return;
+        return @{ $imgsizes->{$2} || [] };
+    };
 
 =head1 DESCRIPTION
 

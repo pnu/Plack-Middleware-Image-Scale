@@ -1,20 +1,18 @@
 use strict;
 use warnings;
 use Plack::Builder;
+use Config::General;
 
 my $app = sub { return [200,[],[]] };
 
-my $imgsizes = {
-    thumbred => [ 50, 100, { fill => 'ff0000' } ],
-    medium   => [ 200, 100, 'crop' ],
-    big      => [ 300, 100, 'crop' ],
-};
+my %imagesize = Config::General->new('imagesize.conf')->getall;
 
 builder {
     enable 'ConditionalGET';
     enable 'Image::Scale', path => sub {
         s{^(.+)_(.+)\.(jpg|png)$}{$1.$3} || return;
-        return @{ $imgsizes->{$2} || [] };
+        ( my %entry = %{$imagesize{$2} || {}} ) || return;
+        return delete @entry{'width','height'}, \%entry;
     };
     enable 'Static', path => qr{^/images/};
     $app;
