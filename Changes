@@ -2,6 +2,8 @@ Changelog for Plack::Middleware::Image::Scale
 
 {{$NEXT}}
 
+0.005     2011-04-04 17:37:41 Europe/Helsinki
+
     * Add examples for using a CodeRef for path parameter.
 
 0.004     2011-04-04 00:51:31 Europe/Helsinki
