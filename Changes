@@ -2,6 +2,8 @@ Changelog for Plack::Middleware::Image::Scale
 
 {{$NEXT}}
 
+0.006     2011-04-05 19:02:18 Europe/Helsinki
+
     * Size matching can read HashRef of HashRefs for easy
       Config::General style configuration data support.
 

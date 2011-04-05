@@ -2,7 +2,7 @@ NAME
     Plack::Middleware::Image::Scale - Resize jpeg and png images on the fly
 
 VERSION
-    version 0.006
+    version 0.007
 
 SYNOPSIS
         ## example1.psgi
