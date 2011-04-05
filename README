@@ -38,20 +38,13 @@ SYNOPSIS
     ratio) with cyan background, and convert to PNG format. Also clipping is
     available, see "CONFIGURATION".
 
-        ## example3.psgi
+        ## see example4.psgi
 
         my %imagesize = Config::General->new('imagesize.conf')->getall;
-
-        builder {
-            enable 'ConditionalGET';
-            enable 'Image::Scale', path => sub {
-                s{^(.+)_(.+)\.(jpg|png)$}{$1.$3} || return;
-                ( my %entry = %{$imagesize{$2} || {}} ) || return;
-                return delete @entry{'width','height'}, \%entry;
-            };
-            enable 'Static', path => qr{^/images/};
-            $app;
-        };
+    
+        # ...
+    
+        enable 'Image::Scale', size => \%imagesize;
 
     A request to /images/foo_medium.png will use images/foo.(png|jpg|gif) as
     original. The size and flags are taken from the configuration file as
@@ -75,19 +68,19 @@ SYNOPSIS
             fill    ff0000
         </thumbred>
 
-    But you might want to use a simple config format, for example:
+    But you might want to use a simple config format if writing it in-line.
 
-        $imagesize = {
-            small  => [  10,  10 ],
-            medium => [  50,  50 ],
-            big    => [ 100, 100, 'crop']
+        ## see example3.psgi
+
+        my $imagesize = {
+            small   => [ 40,100],
+            medium  => [140,200],
+            big     => [240,300],
         };
 
-        # [...]
-        enable 'Image::Scale', path => sub {
-            s{^(.+)_(.+)e.(jpg|png)$}{$1.$3} || return;
-            return @{ $imgsizes->{$2} || [] };
-        };
+        # ...
+
+        enable 'Image::Scale', size => $imagesize;
 
 DESCRIPTION
     Scale and convert images to the requested format on the fly. By default
@@ -97,9 +90,9 @@ DESCRIPTION
     The original image is not modified or even accessed directly by this
     module. The converted image is not cached, but the request can be
     validated (If-Modified-Since) against original image without doing the
-    image processing, or even reading the file content from the filesystem.
-    This middleware should be used together a cache proxy, that caches the
-    converted images for all clients, and implements content validation.
+    image processing. This middleware should be used together a cache proxy,
+    that caches the converted images for all clients, and implements content
+    validation.
 
     The response headers (like Last-Modified or ETag) are from the original
     image, but body is replaced with a PSGI content filter to do the image
@@ -110,27 +103,36 @@ DESCRIPTION
 
     See "CONFIGURATION" for various size/format specifications that can be
     used in the request URI, and "ATTRIBUTES" for common configuration
-    options that you can give as named parameters to the "enable".
+    options that you can use when constructing the middleware.
 
 ATTRIBUTES
   match
-    Must be a RegexpRef, or CodeRef, that may return 1 value, the size
-    parameter for image processing.
+    Must be a RegexpRef, "CodeRef", "HashRef" or "Undef".
 
-    The PATH_INFO is topicalized by settings $_ before the RegexpRef is
-    matched or CodeRef is called. $_ may be rewritten during match.
-    Rewritten "PATH_INFO" is used for fetching the original image. Returning
-    an empty array means no match. Non-matching requests are delegated to
-    the next middleware layer or application.
+    The PATH_INFO is compared against this value to extract the size
+    parameter for image processing. Undef means match always. "PATH_INFO" is
+    topicalized by settings it to $_, and it may be rewritten during the
+    match. The rewritten path is used for fetching the original image.
+
+    The return value is evaluated in array context and may contain one
+    element, the size. Returning an empty array means no match. Non-matching
+    requests are delegated to the next middleware layer or application.
 
   size
-    Must be a RegexpRef, or CodeRef, or HashRef, that may return 3 values,
-    the width, height and flags for image processing.
+    Must be a RegexpRef, "CodeRef", "HashRef" or "Undef".
 
-    The PATH_INFO is topicalized by settings $_ before the RegexpRef is
-    matched or CodeRef is called. Returning an empty array means no match.
-    Non-matching requests are delegated to the next middleware layer or
-    application.
+    The "size" extracted by "path" match is compared against this value to
+    extract width, height and flags for image processing. Undef means match
+    always.
+
+    The return value is evaluated in array context and may contain three
+    elements; width, height and flags. Returning an empty array means no
+    match. Non-matching requests are delegated to the next middleware layer
+    or application.
+
+    Optionally an array or hash reference can be returned. Keys "width",
+    "height" and flags as an hash reference will be unrolled from a hash
+    reference.
 
   orig_ext
     ArrayRef of possible original image formats. See "fetch_orig".
@@ -162,7 +164,7 @@ METHODS
     matches.
 
   body_scaler
-    Call parameters: @args. Return value: CodeRef $cb.
+    Call parameters: @args. Return value: PSGI content filter CodeRef $cb.
 
     Create the content filter callback and return a CodeRef to it. The
     filter will buffer the data and call "image_scale" with parameters @args
@@ -174,21 +176,17 @@ METHODS
 
     Read image from $buffer, scale it to $width x $height and return as
     content-type $ct. Optional $flags to specify image processing options
-    like background fills or cropping. $flags can be a HashRef or
+    like background fills or cropping.
 
 CONFIGURATION
     The default match pattern for URI is
-    "*...**basename*_*width*x*height*-*flags*.*ext*".
+    "*...*_*width*x*height*-*flags*.*ext*".
 
     If URI doesn't match, the request is passed through. Any number of flags
     can be specified, separated with "-". Flags can be boolean (exists or
     doesn't exist), or have a numerical value. Flag name and value are
     separated with a zero-width word to number boundary. For example "z20"
     specifies flag "z" with value 20.
-
-  basename
-    Original image is requested from URI *basename*.*orig_ext*, where
-    *orig_ext* is list of filename extensions. See "orig_ext".
 
   width
     Width of the output image. If not defined, it can be anything (to
@@ -215,16 +213,15 @@ CONFIGURATION
     that preserve the aspect ratio, and then cropping to the exact size.
 
   flags: z
-    Zoom the specified width or height N percent bigger. For example "z20"
-    to zoom 20%. The zooming applies only to width and/or height defined in
-    the URI, and does not change the crop size. Image is always cropped to
-    the specified pixel width, height or both.
+    Zoom the original image N percent bigger. For example "z20" to zoom 20%.
+    Zooming applies only to explicitly defined width and/or height, and it
+    does not change the crop size.
 
-        /images/foo_40x-crop-z20.png
+        /images/foo_40x-z20.png
 
 CAVEATS
     The cropping requires Imager. This is a run-time dependency, and
-    fallback is not to crop the image to the desired size.
+    fallback is not to crop the image to the expected size.
 
 SEE ALSO
     Image::Scale
