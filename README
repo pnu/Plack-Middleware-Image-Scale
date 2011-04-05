@@ -2,7 +2,7 @@ NAME
     Plack::Middleware::Image::Scale - Resize jpeg and png images on the fly
 
 VERSION
-    version 0.005
+    version 0.006
 
 SYNOPSIS
         ## example1.psgi
@@ -114,19 +114,23 @@ DESCRIPTION
 
 ATTRIBUTES
   match
-    Only matching URIs are processed with this module. The match is done
-    against PATH_INFO. Non-matching requests are delegated to the next
-    middleware layer or application.
+    Must be a RegexpRef, or CodeRef, that may return 1 value, the size
+    parameter for image processing.
 
-    Must be a RegexpRef, or CodeRef, that may return 3 values (regexp
-    captures or normal return values). The request path is passed to the
-    CodeRef in $_, and can be rewritten during match. This is used to strip
-    off the image parameters from the URI. Rewritten URI is used for
-    fetching the original image. Empty array means no match.
+    The PATH_INFO is topicalized by settings $_ before the RegexpRef is
+    matched or CodeRef is called. $_ may be rewritten during match.
+    Rewritten "PATH_INFO" is used for fetching the original image. Returning
+    an empty array means no match. Non-matching requests are delegated to
+    the next middleware layer or application.
 
-    First and second captures are the desired width and height of the
-    resulting image. Third capture is an optional flag string. See
-    "CONFIGURATION".
+  size
+    Must be a RegexpRef, or CodeRef, or HashRef, that may return 3 values,
+    the width, height and flags for image processing.
+
+    The PATH_INFO is topicalized by settings $_ before the RegexpRef is
+    matched or CodeRef is called. Returning an empty array means no match.
+    Non-matching requests are delegated to the next middleware layer or
+    application.
 
   orig_ext
     ArrayRef of possible original image formats. See "fetch_orig".

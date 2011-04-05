@@ -15,20 +15,15 @@ extends 'Plack::Middleware';
 
 =attr match
 
-Only matching URIs are processed with this module. The match is done against
-L<PATH_INFO|PSGI/The_Environment>.  Non-matching requests are delegated to the
-next middleware layer or application.
-
 Must be a L<RegexpRef|Moose::Util::TypeConstraints/Default_Type_Constraints>,
 or L<CodeRef|Moose::Util::TypeConstraints/Default_Type_Constraints>, that may
-return 3 values (regexp captures or normal return values). The request path is
-passed to the CodeRef in C<$_>, and can be rewritten during match. This is used
-to strip off the image parameters from the URI. Rewritten URI is used for
-fetching the original image. Empty array means no match.
+return 1 value, the size parameter for image processing.
 
-First and second captures are the desired width and height of the
-resulting image. Third capture is an optional flag string. See
-L</CONFIGURATION>.
+The L<PATH_INFO|PSGI/The_Environment> is topicalized by settings C<$_> before
+the RegexpRef is matched or CodeRef is called. C<$_> may be rewritten during
+match. Rewritten C<PATH_INFO> is used for fetching the original image.
+Returning an empty array means no match. Non-matching requests are delegated
+to the next middleware layer or application.
 
 =cut
 
@@ -37,18 +32,31 @@ has path => (
     builder => '_path_builder'
 );
 
-sub _path_builder { sub {
-    s{
-        \A
-        (.+)                    # $1 basename
-        _((\d+))?               # $3 width
-        x((\d+))?               # $5 height
-        (-( .+))?               # $7 flags
-        (?=\.(png|jpg|jpeg)\z)  # look-ahead: .<ext>\z
-    }{$1}x || return;
+sub _path_builder {
+    sub {
+        s{^(.+)_(.+)(?=\.(png|jpg|jpeg)$)}{$1}x || return;
+        return $2;
+    }
+}
 
-    return $3, $5, $7;
-} }
+=attr size
+
+Must be a L<RegexpRef|Moose::Util::TypeConstraints/Default_Type_Constraints>,
+or L<CodeRef|Moose::Util::TypeConstraints/Default_Type_Constraints>, or
+L<HashRef|Moose::Util::TypeConstraints/Default_Type_Constraints>, that may
+return 3 values, the width, height and flags for image processing.
+
+The L<PATH_INFO|PSGI/The_Environment> is topicalized by settings C<$_> before
+the RegexpRef is matched or CodeRef is called. Returning an empty array means
+no match. Non-matching requests are delegated to the next middleware layer or
+application.
+
+=cut
+
+has size => (
+    is => 'rw', lazy => 1, isa => 'RegexpRef|CodeRef|HashRef',
+    default => sub { qr{^(\d+)?x(\d+)?(?:-(.+))?$} }
+);
 
 =attr orig_ext
 
@@ -124,17 +132,26 @@ sub call {
 
     my $path = $env->{PATH_INFO};
     my $path_match = $self->path;
-    my @match;
-
-    ## Check that uri matches and extract the pieces, or pass thru
-    ## Topicalize $path (make $_ an alias to it) for callback.
+    my $size;
     for ( $path ) {
-        @match = 'CODE' eq ref $path_match ? $path_match->($_) :
-                       defined $path_match ? $_ =~ $path_match : undef;
+        $size = 'CODE' eq ref $path_match ? $path_match->($_) :
+                      defined $path_match ? $_ =~ $path_match : undef;
     }
-
+    return $self->app->($env) unless defined $size;
+    
+    my $size_match = $self->size;
+    my @match;
+    for ( $size ) {
+        @match = 'CODE' eq ref $size_match ? $size_match->($_) :
+                 'HASH' eq ref $size_match ? $size_match->{$_} :
+                       defined $size_match ? $_ =~ $size_match : undef;
+    }
     return $self->app->($env) unless @match;
-    my ($width,$height,$flags) = @match;
+    
+    if ( ref $match[0] eq 'HASH' ) {
+        my %entry = %{$match[0]};
+        @match = (delete @entry{'width','height'}, \%entry);
+    }
 
     ## Remove and extract the file extension
     $path =~ s/\.(\w+)$//; my $ext = $1;
@@ -147,7 +164,7 @@ sub call {
         my $res = shift;
         my $ct = Plack::MIME->mime_type(".$ext");
         Plack::Util::header_set( $res->[1], 'Content-Type', $ct );
-        return $self->body_scaler( $ct, $width, $height, $flags );
+        return $self->body_scaler( $ct, @match );
     });
 }
 
