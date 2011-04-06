@@ -13,7 +13,7 @@ use Data::Dumper;
 
 my $handler = builder {
     enable 'Image::Scale';
-    enable 'Static', path => qr{^/images/}, root => 't';
+    enable 'Static', path => qr{^/images/}, root => 't', pass_through => 1;
     sub { [
         404,
         [ 'Content-Type' => 'text/plain', 'Content-Length' => 8 ],
@@ -24,6 +24,12 @@ my $handler = builder {
 test_psgi $handler, sub {
     my $cb = shift;
     
+    subtest 'Not found case' => sub {
+        my $res = $cb->(GET "http://localhost/images/no_100x100.png");
+        is $res->code, 404, "no_100x100.png code 404";
+        is $res->content, 'not found', "no_100x100.png content 'not found'";
+    };
+
     subtest 'Basic size tests' => sub {
         
         my @sizetests = (
