@@ -84,7 +84,7 @@ L<Image::Scale|Image::Scale/resize(_\%OPTIONS_)>.
 =cut
 
 has memory_limit => (
-    is => 'rw', lazy => 1, isa => 'Int',
+    is => 'rw', lazy => 1, isa => 'Int|Undef',
     default => 10_000_000 # bytes
 );
 
@@ -280,7 +280,8 @@ sub image_scale {
 
     my $output;
     try {
-        my $img = Image::Scale->new($bufref);
+        my $img = Image::Scale->new($bufref)
+            or die 'Invalid data / image format not recognized';
 
         if ( exists $flag{crop} and defined $width and defined $height ) {
             my $ratio = $img->width / $img->height;
@@ -298,7 +299,8 @@ sub image_scale {
             defined $height ? (height => $height) : (),
             exists  $flag{fill} ? (keep_aspect => 1) : (),
             defined $flag{fill} ? (bgcolor => hex $flag{fill}) : (),
-            memory_limit => $self->memory_limit,
+            defined $self->memory_limit ?
+                (memory_limit => $self->memory_limit) : (),
         });
 
         $output = $ct eq 'image/jpeg' ? $img->as_jpeg($self->jpeg_quality || ()) :
