@@ -150,7 +150,7 @@ sub call {
     return $self->app->($env) unless $res;
 
     ## Post-process the response with a body filter
-    Plack::Util::response_cb( $res, sub {
+    $self->response_cb( $res, sub {
         my $res = shift;
         my $ct = Plack::MIME->mime_type(".$ext");
         Plack::Util::header_set( $res->[1], 'Content-Type', $ct );
