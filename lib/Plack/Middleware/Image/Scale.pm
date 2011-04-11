@@ -176,15 +176,18 @@ sub call {
     });
 }
 
-## Helper for matching a Scalar value against CodeRef, HashRef
-## or RegexpRef. The first argument may be modified during match.
+## Helper for matching a Scalar value against CodeRef, HashRef,
+## RegexpRef or Str. The first argument may be modified during match.
 sub _match {
     my @match;
     for ( $_[0] ) {
         my $match = $_[1];
-        @match = 'CODE' eq ref $match ? $match->($_) :
-                 'HASH' eq ref $match ? $match->{$_} :
-                       defined $match ? $_ =~ $match : undef;
+        @match =
+          'CODE' eq ref $match ? $match->($_) :
+          'HASH' eq ref $match ? $match->{$_} :
+        'Regexp' eq ref $match ? $_ =~ $match :
+                defined $match ? (substr($_,0,length $match) eq $match ? ($match) : ()) :
+                                 undef;
     }
     return @match;
 }
