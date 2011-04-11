@@ -13,49 +13,78 @@ use Carp;
 
 extends 'Plack::Middleware';
 
-=attr match
+=attr path
 
 Must be a L<RegexpRef|Moose::Util::TypeConstraints/Default_Type_Constraints>,
-C<CodeRef>, C<HashRef> or C<Undef>.
+L<CodeRef|Moose::Util::TypeConstraints/Default_Type_Constraints>,
+L<Str|Moose::Util::TypeConstraints/Default_Type_Constraints> or
+L<Undef|Moose::Util::TypeConstraints/Default_Type_Constraints>.
 
 The L<PATH_INFO|PSGI/The_Environment> is compared against this value to
-extract the size parameter for image processing. Undef means match always.
-C<PATH_INFO> is topicalized by settings it to C<$_>, and it may be rewritten
-during the match. The rewritten path is used for fetching the original image.
+evaluate if the request should be processed. Undef (the default) will match
+always.  C<PATH_INFO> is topicalized by settings it to C<$_>, and it may be
+rewritten during C<CodeRef> matching. Rewriting can be used to relocate image
+paths, much like C<path> parameter for L<Plack::Middleware::Static>.
 
-The return value is evaluated in array context and may contain one element,
-the size.  Returning an empty array means no match. Non-matching requests are
-delegated to the next middleware layer or application.
+If path matches, next it will be compared against L</name>. If path doesn't
+match, the request will be delegated to the next middleware layer or
+application.
 
 =cut
 
 has path => (
-    is => 'rw', lazy => 1, isa => 'RegexpRef|CodeRef|HashRef|Undef',
-    builder => '_path_builder'
+    is => 'rw', lazy => 1, isa => 'RegexpRef|CodeRef|Str|Undef',
+    default => undef
 );
 
-sub _path_builder {
-    sub {
-        s{^(.+)_(.+)(?=\.(png|jpg|jpeg)$)}{$1}x || return;
-        return $2;
-    }
-}
+=attr match
+
+Must be a L<RegexpRef|Moose::Util::TypeConstraints/Default_Type_Constraints>,
+or L<CodeRef|Moose::Util::TypeConstraints/Default_Type_Constraints>.
+
+The L<PATH_INFO|PSGI/The_Environment>, possibly rewritten during L</path>
+matching, is compared against this value to extract C<name>, C<size>
+and C<ext>. The default value is:
+
+    qr{^(.+)(?:_(.+?))?(?:\.(jpe?g|png|image))$}
+
+The expression is evaluated in array context and may return three elements:
+C<name>, C<size> and C<ext>. Returning an empty array means no match.
+Non-matching requests are delegated to the next middleware layer or
+application.
+
+If the path matches, the original image is fetched from C<name>.L</orig_ext>,
+scaled with parameters extracted from C<size> and converted to the content type
+defined by C<ext>. See also L</any_ext>.
+
+=cut
+
+has match => (
+    is => 'rw', lazy => 1, isa => 'RegexpRef|CodeRef',
+    default => sub { qr{^(.+?)(?:_([^_]+?))?(?:\.(jpe?g|png|image))$} }
+);
 
 =attr size
 
 Must be a L<RegexpRef|Moose::Util::TypeConstraints/Default_Type_Constraints>,
-C<CodeRef>, C<HashRef> or C<Undef>.
+L<CodeRef|Moose::Util::TypeConstraints/Default_Type_Constraints>,
+L<HashRef|Moose::Util::TypeConstraints/Default_Type_Constraints>,
+L<Undef|Moose::Util::TypeConstraints/Default_Type_Constraints>.
 
-The C<size> extracted by L</path> match is compared against this value to
-extract width, height and flags for image processing. Undef means match
-always.
+The C<size> extracted by L</match> is compared against this value to evaluate
+if the request should be processed, and to map it into width, height and flags
+for image processing. Undef will match always and use default width, height
+and flags as defined by the L</ATTRIBUTES>. The default value is:
 
-The return value is evaluated in array context and may contain three elements;
-width, height and flags. Returning an empty array means no match. Non-matching
-requests are delegated to the next middleware layer or application.
+    qr{^(\d+)?x(\d+)?(?:-(.+))?$}
 
-Optionally an array or hash reference can be returned. Keys C<width>,
-C<height> and flags as an hash reference will be unrolled from a hash reference.
+The expression is evaluated in array context and may return three elements;
+C<width>, C<height> and C<flags>. Returning an empty array means no match.
+Non-matching requests are delegated to the next middleware layer or
+application.
+
+Optionally a hash reference can be returned. Keys C<width>, C<height>, and any
+remaining keys as an hash reference, will be unrolled from the hash reference.
 
 =cut
 
@@ -148,16 +177,23 @@ has flags => (
 
 sub call {
     my ($self,$env) = @_;
+    my $path = $env->{PATH_INFO};
+    my @param;
 
-    my $path = $env->{PATH_INFO}; 
-    my ($size) = _match($path,$self->path);
-    return $self->app->($env) unless defined $size;
+    if ( defined $self->path ) {
+        my ($m) = _match($path,$self->path);
+        return $self->app->($env) unless $m;
+    }
 
-    my @param = _unroll(_match($size,$self->size));
-    return $self->app->($env) unless @param;
+    my @m = _match($path,$self->match);
+    return $self->app->($env) unless @m;
+    ($path, my $size, my $ext) = @m;
+    return $self->app->($env) unless $path and $ext;
 
-    ## Remove and extract the file extension
-    $path =~ s/\.(\w+)$//; my $ext = $1;
+    if ( defined $size ) {
+        @param = _unroll(_match($size,$self->size));
+        return $self->app->($env) unless @param;
+    }
 
     my $res = $self->fetch_orig($env,$path);
     return $self->app->($env) unless $res;
@@ -382,7 +418,7 @@ original, scale it to 40x40 px size and convert to PNG format.
         mount '/' => $app;
     };
 
-A request to /thumbs/foo_x.png will use images/foo.(png|jpg|gif) as original,
+A request to /thumbs/foo.png will use images/foo.(png|jpg|gif) as original,
 scale it small enough to fit 200x100 px size, fill extra borders (top/down or
 left/right, depending on the original image aspect ratio) with cyan
 background, and convert to PNG format. Also clipping is available, see

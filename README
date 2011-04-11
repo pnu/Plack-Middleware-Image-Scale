@@ -32,7 +32,7 @@ SYNOPSIS
             mount '/' => $app;
         };
 
-    A request to /thumbs/foo_x.png will use images/foo.(png|jpg|gif) as
+    A request to /thumbs/foo.png will use images/foo.(png|jpg|gif) as
     original, scale it small enough to fit 200x100 px size, fill extra
     borders (top/down or left/right, depending on the original image aspect
     ratio) with cyan background, and convert to PNG format. Also clipping is
@@ -95,32 +95,55 @@ DESCRIPTION
     options that you can use when constructing the middleware.
 
 ATTRIBUTES
+  path
+    Must be a RegexpRef, CodeRef, Str or Undef.
+
+    The PATH_INFO is compared against this value to evaluate if the request
+    should be processed. Undef (the default) will match always. "PATH_INFO"
+    is topicalized by settings it to $_, and it may be rewritten during
+    "CodeRef" matching. Rewriting can be used to relocate image paths, much
+    like "path" parameter for Plack::Middleware::Static.
+
+    If path matches, next it will be compared against "name". If path
+    doesn't match, the request will be delegated to the next middleware
+    layer or application.
+
   match
-    Must be a RegexpRef, "CodeRef", "HashRef" or "Undef".
+    Must be a RegexpRef, or CodeRef.
 
-    The PATH_INFO is compared against this value to extract the size
-    parameter for image processing. Undef means match always. "PATH_INFO" is
-    topicalized by settings it to $_, and it may be rewritten during the
-    match. The rewritten path is used for fetching the original image.
+    The PATH_INFO, possibly rewritten during "path" matching, is compared
+    against this value to extract "name", "size" and "ext". The default
+    value is:
 
-    The return value is evaluated in array context and may contain one
-    element, the size. Returning an empty array means no match. Non-matching
-    requests are delegated to the next middleware layer or application.
+        qr{^(.+)(?:_(.+?))?(?:\.(jpe?g|png|image))$}
 
-  size
-    Must be a RegexpRef, "CodeRef", "HashRef" or "Undef".
-
-    The "size" extracted by "path" match is compared against this value to
-    extract width, height and flags for image processing. Undef means match
-    always.
-
-    The return value is evaluated in array context and may contain three
-    elements; width, height and flags. Returning an empty array means no
+    The expression is evaluated in array context and may return three
+    elements: "name", "size" and "ext". Returning an empty array means no
     match. Non-matching requests are delegated to the next middleware layer
     or application.
 
-    Optionally an array or hash reference can be returned. Keys "width",
-    "height" and flags as an hash reference will be unrolled from a hash
+    If the path matches, the original image is fetched from
+    "name"."orig_ext", scaled with parameters extracted from "size" and
+    converted to the content type defined by "ext". See also "any_ext".
+
+  size
+    Must be a RegexpRef, CodeRef, HashRef, Undef.
+
+    The "size" extracted by "match" is compared against this value to
+    evaluate if the request should be processed, and to map it into width,
+    height and flags for image processing. Undef will match always and use
+    default width, height and flags as defined by the "ATTRIBUTES". The
+    default value is:
+
+        qr{^(\d+)?x(\d+)?(?:-(.+))?$}
+
+    The expression is evaluated in array context and may return three
+    elements; "width", "height" and "flags". Returning an empty array means
+    no match. Non-matching requests are delegated to the next middleware
+    layer or application.
+
+    Optionally a hash reference can be returned. Keys "width", "height", and
+    any remaining keys as an hash reference, will be unrolled from the hash
     reference.
 
   any_ext
