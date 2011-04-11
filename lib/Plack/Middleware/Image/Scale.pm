@@ -418,19 +418,9 @@ parsed by Config::General.
         fill    ff0000
     </thumbred>
 
-But you might want to use a simple config format if writing it in-line.
-
-    ## see example3.psgi
-
-    my $imagesize = {
-        small   => [ 40,100],
-        medium  => [140,200],
-        big     => [240,300],
-    };
-
-    # ...
-
-    enable 'Image::Scale', size => $imagesize;
+For more examples, browse into directory
+L<eg|http://cpansearch.perl.org/src/PNU/> inside the distribution
+directory for this version.
 
 =head1 DESCRIPTION
 
