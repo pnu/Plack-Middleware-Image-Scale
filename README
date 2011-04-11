@@ -134,6 +134,11 @@ ATTRIBUTES
     "height" and flags as an hash reference will be unrolled from a hash
     reference.
 
+  any_ext
+    If defined and request "ext" is equal to this, the content type of the
+    original image is used in the output. This means that the image format
+    of the original image is preserved. Default is "image".
+
   orig_ext
     ArrayRef of possible original image formats. See "fetch_orig".
 

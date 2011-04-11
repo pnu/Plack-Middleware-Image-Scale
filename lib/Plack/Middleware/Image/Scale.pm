@@ -64,6 +64,19 @@ has size => (
     default => sub { qr{^(\d+)?x(\d+)?(?:-(.+))?$} }
 );
 
+=attr any_ext
+
+If defined and request C<ext> is equal to this, the content type of the original
+image is used in the output. This means that the image format of the original
+image is preserved. Default is C<image>.
+
+=cut
+
+has any_ext => (
+    is => 'rw', lazy => 1, isa => 'Str|Undef',
+    default => 'image'
+);
+
 =attr orig_ext
 
 L<ArrayRef|Moose::Util::TypeConstraints/Default_Type_Constraints>
@@ -152,8 +165,13 @@ sub call {
     ## Post-process the response with a body filter
     $self->response_cb( $res, sub {
         my $res = shift;
-        my $ct = Plack::MIME->mime_type(".$ext");
-        Plack::Util::header_set( $res->[1], 'Content-Type', $ct );
+        my $ct;
+        if ( defined $self->any_ext and $ext eq $self->any_ext ) {
+            $ct = Plack::Util::header_get( $res->[1], 'Content-Type' );
+        } else {
+            $ct = Plack::MIME->mime_type(".$ext");
+            Plack::Util::header_set( $res->[1], 'Content-Type', $ct );
+        }
         return $self->body_scaler( $ct, @param );
     });
 }
