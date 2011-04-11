@@ -242,7 +242,6 @@ received, and finally return the converted data.
 
 =cut
 
-
 sub body_scaler {
     my $self = shift;
     my @args = @_;
@@ -326,7 +325,7 @@ sub image_scale {
 
         $output = $ct eq 'image/jpeg' ? $img->as_jpeg($self->jpeg_quality || ()) :
                   $ct eq 'image/png'  ? $img->as_png :
-                  die "Conversion to $ct is not implemented";
+                  die "Conversion to '$ct' is not implemented";
     } catch {
         carp $_;
         return;
