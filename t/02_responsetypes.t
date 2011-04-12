@@ -57,6 +57,14 @@ my $handler = builder {
                 }
                 $writer->close;
             };
+
+        } elsif ( $env->{PATH_INFO} eq '/streaming-empty-304.png' ) {
+            return sub {
+                my $writer = shift->(
+                    [ 304, ['Content-Type' => 'image/png'] ]
+                );
+                $writer->close;
+            };
         }
 
         return [404,['Content-Type','text/plain'],[]];
@@ -103,6 +111,15 @@ test_psgi $handler, sub {
         my $res = $cb->(GET "http://localhost/streaming_200x200.png");
         is $res->code, 200, 'Response HTTP status';
         is $res->content_type, 'image/png', 'Response Content-Type';
+
+    };
+
+    subtest 'streaming empty 304 response' => sub {
+
+        my $res = $cb->(GET "http://localhost/streaming-empty-304_200x200.png");
+        is $res->code, 304, 'Response HTTP status';
+        is $res->content_type, 'image/png', 'Response Content-Type';
+        is $res->content, '', 'Response body is empty';
 
     };
 

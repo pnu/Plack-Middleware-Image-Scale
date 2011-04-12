@@ -296,7 +296,7 @@ sub body_scaler {
         return if not defined $buffer;
 
         ## Process the buffer
-        my $img = $self->image_scale(\$buffer,@args);
+        my $img = $buffer ? $self->image_scale(\$buffer,@args) : '';
         undef $buffer;
         return $img;
     };
@@ -364,7 +364,7 @@ sub image_scale {
                   die "Conversion to '$ct' is not implemented";
     } catch {
         carp $_;
-        return;
+        $output = $$bufref;
     };
 
     if ( defined $owidth  and $width  > $owidth or
@@ -380,7 +380,6 @@ sub image_scale {
             $crop->write( data => \$output, type => (split '/', $ct)[1] );
         } catch {
             carp $_;
-            return;
         };
     }
 
