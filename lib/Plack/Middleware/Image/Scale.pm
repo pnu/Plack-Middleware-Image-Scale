@@ -8,7 +8,7 @@ use Plack::Util;
 use Plack::MIME;
 use Try::Tiny;
 use Image::Scale;
-use List::Util qw( max );
+use List::Util qw( min max );
 use Carp;
 
 extends 'Plack::Middleware';
@@ -343,6 +343,10 @@ sub image_scale {
             my $ratio = $img->width / $img->height;
             $width  = max $width , $height * $ratio;
             $height = max $height, $width / $ratio;
+        } elsif ( exists $flag{fit} and defined $width and defined $height ) {
+            my $ratio = $img->width / $img->height;
+            $width  = min $width , $height * $ratio;
+            $height = min $height, $width / $ratio;
         }
 
         unless ( defined $width or defined $height ) {
@@ -518,6 +522,14 @@ with png output means transparent background.
 Image aspect ratio is preserved by scaling and cropping from middle of the
 image. This means scaling to the bigger of the two possible sizes that
 preserve the aspect ratio, and then cropping to the exact size.
+
+=head2 flags: fit
+
+Image aspect ratio is preserved by scaling the image to the smaller of the two
+possible sizes. This means that the resulting picture may have one dimension
+smaller than specified, but cropping or filling is avoided.
+
+See documentation in distribution directory C<doc> for a visual explanation.
 
 =head2 flags: z
 
