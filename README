@@ -229,6 +229,15 @@ CONFIGURATION
     the image. This means scaling to the bigger of the two possible sizes
     that preserve the aspect ratio, and then cropping to the exact size.
 
+  flags: fit
+    Image aspect ratio is preserved by scaling the image to the smaller of
+    the two possible sizes. This means that the resulting picture may have
+    one dimension smaller than specified, but cropping or filling is
+    avoided.
+
+    See documentation in distribution directory "doc" for a visual
+    explanation.
+
   flags: z
     Zoom the original image N percent bigger. For example "z20" to zoom 20%.
     Zooming applies only to explicitly defined width and/or height, and it

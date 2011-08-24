@@ -2,6 +2,11 @@ Changelog for Plack::Middleware::Image::Scale
 
 {{$NEXT}}
 
+0.008     2011-08-24 13:46:16 Europe/Helsinki
+
+    * Implement new flag "fit", additional documentation in doc directory.
+    * Do not try to process empty bodies.
+
 0.007     2011-04-11 21:09:42 Europe/Helsinki
 
     * Changes to matching logic. See README for overview.
