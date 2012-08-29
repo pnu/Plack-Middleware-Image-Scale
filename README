@@ -2,7 +2,7 @@ NAME
     Plack::Middleware::Image::Scale - Resize jpeg and png images on the fly
 
 VERSION
-    version 0.008
+    version 0.009
 
 SYNOPSIS
         ## example1.psgi
@@ -68,8 +68,9 @@ SYNOPSIS
             fill    ff0000
         </thumbred>
 
-    For more examples, browse into directory <eg> inside the distribution
-    directory for this version.
+    For more examples, browse into directory eg
+    <http://cpansearch.perl.org/src/PNU/> inside the distribution directory
+    for this version.
 
 DESCRIPTION
     Scale and convert images to the requested format on the fly. By default
