@@ -2,6 +2,11 @@ Changelog for Plack::Middleware::Image::Scale
 
 {{$NEXT}}
 
+0.009     2012-08-29 14:03:12 Europe/Helsinki
+
+    * Experimental and optional PDF support, requires
+      Image::Magick::Thumbnail::PDF.
+
 0.008     2011-08-24 13:46:16 Europe/Helsinki
 
     * Implement new flag "fit", additional documentation in doc directory.
