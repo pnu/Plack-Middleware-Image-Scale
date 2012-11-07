@@ -2,6 +2,10 @@ Changelog for Plack::Middleware::Image::Scale
 
 {{$NEXT}}
 
+0.010     2012-11-07 12:26:00 Europe/Helsinki
+
+    * Also match jpeg file extension.
+
 0.009     2012-08-29 14:03:12 Europe/Helsinki
 
     * Experimental and optional PDF support, requires
