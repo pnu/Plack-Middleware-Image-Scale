@@ -115,7 +115,7 @@ of possible original image formats. See L</fetch_orig>.
 
 has orig_ext => (
     is => 'rw', lazy => 1, isa => 'ArrayRef',
-    default => sub { [qw( jpg png gif )] }
+    default => sub { [qw( jpg png gif jpeg )] }
 );
 
 =attr memory_limit
@@ -426,7 +426,7 @@ sub image_scale {
         $app;
     };
 
-A request to /images/foo_40x40.png will use images/foo.(png|jpg|gif) as
+A request to /images/foo_40x40.png will use images/foo.(png|jpg|gif|jpeg) as
 original, scale it to 40x40 px size and convert to PNG format.
 
     ## example2.psgi
@@ -444,7 +444,7 @@ original, scale it to 40x40 px size and convert to PNG format.
         mount '/' => $app;
     };
 
-A request to /thumbs/foo.png will use images/foo.(png|jpg|gif) as original,
+A request to /thumbs/foo.png will use images/foo.(png|jpg|gif|jpeg) as original,
 scale it small enough to fit 200x100 px size, fill extra borders (top/down or
 left/right, depending on the original image aspect ratio) with cyan
 background, and convert to PNG format. Also clipping is available, see
@@ -458,7 +458,7 @@ L</CONFIGURATION>.
     
     enable 'Image::Scale', size => \%imagesize;
 
-A request to /images/foo_medium.png will use images/foo.(png|jpg|gif) as
+A request to /images/foo_medium.png will use images/foo.(png|jpg|gif|jpeg) as
 original. The size and flags are taken from the configuration file as
 parsed by Config::General.
 
