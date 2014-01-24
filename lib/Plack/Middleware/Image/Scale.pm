@@ -3,7 +3,7 @@ package Plack::Middleware::Image::Scale;
 # ABSTRACT: Resize jpeg and png images on the fly
 
 use Moose;
-use Class::MOP;
+use Class::Load;
 use Plack::Util;
 use Plack::MIME;
 use Try::Tiny;
@@ -338,8 +338,8 @@ sub image_scale {
     my $output;
     if ($orig_ct eq 'application/pdf') {
         try {
-            Class::MOP::load_class('Image::Magick::Thumbnail::PDF');
-            Class::MOP::load_class('File::Temp');
+            Class::Load::load_class('Image::Magick::Thumbnail::PDF');
+            Class::Load::load_class('File::Temp');
             my $in = File::Temp->new( SUFFIX => '.pdf' );
             my $out = File::Temp->new( SUFFIX => '.png' );
             $in->write( $$bufref ); $in->close;
@@ -397,7 +397,7 @@ sub image_scale {
     if ( defined $owidth  and $width  > $owidth or
          defined $oheight and $height > $oheight ) {
         try {
-            Class::MOP::load_class('Imager');
+            Class::Load::load_class('Imager');
             my $img = Imager->new;
             $img->read( data => $output ) || die;
             my $crop = $img->crop(
