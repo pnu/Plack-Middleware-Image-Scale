@@ -2,6 +2,12 @@ Changelog for Plack::Middleware::Image::Scale
 
 {{$NEXT}}
 
+0.011     2016-02-04 12:50:50+02:00 Europe/Helsinki
+
+    * Fixes RT#90946 Class::MOP::load_class deprecation (Zoffix Znet)
+    * Cleanup whitespaces and various warnings
+    * Update build system, rename README -> README.md, fix synopsis
+
 0.010     2012-11-07 12:26:00 Europe/Helsinki
 
     * Also match jpeg file extension.
