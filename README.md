@@ -9,6 +9,9 @@ version 0.011
 # SYNOPSIS
 
     ## example1.psgi
+    use Plack::Builder;
+    use Plack::Middleware::Image::Scale;
+    my $app = sub { return [200,[],[]] };
 
     builder {
         enable 'ConditionalGET';
@@ -21,6 +24,10 @@ A request to /images/foo\_40x40.png will use images/foo.(png|jpg|gif|jpeg) as
 original, scale it to 40x40 px size and convert to PNG format.
 
     ## example2.psgi
+    use Plack::Builder;
+    use Plack::App::File;
+    use Plack::Middleware::Image::Scale;
+    my $app = sub { return [200,['Content-Type'=>'text/plain'],['hello']] };
 
     my $thumber = builder {
         enable 'ConditionalGET';
@@ -40,40 +47,6 @@ scale it small enough to fit 200x100 px size, fill extra borders (top/down or
 left/right, depending on the original image aspect ratio) with cyan
 background, and convert to PNG format. Also clipping is available, see
 ["CONFIGURATION"](#configuration).
-
-    ## see example4.psgi
-
-    my %imagesize = Config::General->new('imagesize.conf')->getall;
-
-    # ...
-
-    enable 'Image::Scale', size => \%imagesize;
-
-A request to /images/foo\_medium.png will use images/foo.(png|jpg|gif|jpeg) as
-original. The size and flags are taken from the configuration file as
-parsed by Config::General.
-
-    ## imagesize.conf
-
-    <medium>
-        width   200
-        height  100
-        crop
-    </medium>
-    <big>
-        width   300
-        height  100
-        crop
-    </big>
-    <thumbred>
-        width   50
-        height  100
-        fill    ff0000
-    </thumbred>
-
-For more examples, browse into directory
-[eg](http://cpansearch.perl.org/src/PNU/) inside the distribution
-directory for this version.
 
 # DESCRIPTION
 
@@ -275,6 +248,42 @@ Zooming applies only to explicitly defined width and/or height, and it does
 not change the crop size.
 
     /images/foo_40x-z20.png
+
+# EXAMPLES
+
+    ## see example4.psgi
+
+    my %imagesize = Config::General->new('imagesize.conf')->getall;
+
+    # ...
+
+    enable 'Image::Scale', size => \%imagesize;
+
+A request to /images/foo\_medium.png will use images/foo.(png|jpg|gif|jpeg) as
+original. The size and flags are taken from the configuration file as
+parsed by Config::General.
+
+    ## imagesize.conf
+
+    <medium>
+        width   200
+        height  100
+        crop
+    </medium>
+    <big>
+        width   300
+        height  100
+        crop
+    </big>
+    <thumbred>
+        width   50
+        height  100
+        fill    ff0000
+    </thumbred>
+
+For more examples, browse into directory
+[eg](http://cpansearch.perl.org/src/PNU/) inside the distribution
+directory for this version.
 
 # CAVEATS
 
