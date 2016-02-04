@@ -44,13 +44,13 @@ test_psgi $handler, sub {
             subtest $filename => sub {
                 my $resize_calls = Test::Invocation::Arguments->new(class => 'Image::Scale', method => 'resize');
                 my $crop_calls = Test::Invocation::Arguments->new(class => 'Imager', method => 'crop');
-                
+
                 my $res = $cb->(GET "http://localhost/images/$filename");
                 is $res->code, 200, 'Response HTTP status';
-                
+
                 is_deeply $resize_calls->pop, $resize, 'resize args';
                 is $resize_calls->count, 0, 'only one resize call';
-                
+
                 is_deeply $crop_calls->pop, $crop, 'crop args';
                 is $crop_calls->count, 0, 'only one crop call';
             };

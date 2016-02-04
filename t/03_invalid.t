@@ -24,7 +24,7 @@ test_psgi $handler, sub {
     my $cb = shift;
 
     subtest 'Invalid cases' => sub {
-        
+
         my @invalid = (
            '100x100_x.zip',   # invalid extension
            '100x100_x.',      # missing extension

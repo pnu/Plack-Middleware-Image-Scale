@@ -25,12 +25,12 @@ test_psgi $handler, sub {
     my $cb = shift;
 
     subtest 'Fall-thru the middleware layers' => sub {
-        
+
         my $res = $cb->(GET "http://localhost/");
         is $res->code, 404, 'Response HTTP status';
         is $res->content_type, 'text/plain', 'Response Content-Type';
         is $res->content, 'not found', 'Response body';
-    
+
     };
 
     subtest 'The Static middleware layer' => sub {
@@ -45,7 +45,7 @@ test_psgi $handler, sub {
             my $res = $cb->(GET "http://localhost/images/nonexisting.png");
             is $res->code, 404, 'Response HTTP status';
         };
-        
+
     };
 
 };

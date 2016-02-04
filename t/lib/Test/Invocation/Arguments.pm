@@ -9,9 +9,9 @@ has method => ( is => 'ro', isa => 'Str' );
 has method_orig => ( is => 'rw' );
 
 has _log => (
-    isa     => 'ArrayRef[ArrayRef]', 
+    isa     => 'ArrayRef[ArrayRef]',
     default => sub { [] },
-    traits  => ['Array'], 
+    traits  => ['Array'],
     handles => {
         push   => 'push',
         pop    => 'pop',

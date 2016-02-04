@@ -23,7 +23,7 @@ my $handler = builder {
 
 test_psgi $handler, sub {
     my $cb = shift;
-    
+
     subtest 'Not found case' => sub {
         my $res = $cb->(GET "http://localhost/images/no_100x100.png");
         is $res->code, 404, "no_100x100.png code 404";
@@ -31,26 +31,26 @@ test_psgi $handler, sub {
     };
 
     subtest 'Basic size tests' => sub {
-        
+
         my @sizetests = (
             [ '100x100_x.png',                 200, 100, 100 ],
             [ '100x100_200x.png',              200, 200, 200 ],
             [ '100x100_50x.png',               200,  50,  50 ],
             [ '100x100_x200.png',              200, 200, 200 ],
             [ '100x100_x50.png',               200,  50,  50 ],
-            
+
             [ '100x100_x-z20.png',             200, 100, 100 ],
             [ '100x100_200x-z20.png',          200, 200, 240 ],
             [ '100x100_50x-z20.png',           200,  50,  60 ],
             [ '100x100_x200-z20.png',          200, 240, 200 ],
             [ '100x100_x50-z20.png',           200,  60,  50 ],
-            
+
             [ '100x100_x-crop.png',            200, 100, 100 ],
             [ '100x100_200x-crop.png',         200, 200, 200 ],
             [ '100x100_50x-crop.png',          200,  50,  50 ],
             [ '100x100_x200-crop.png',         200, 200, 200 ],
             [ '100x100_x50-crop.png',          200,  50,  50 ],
-            
+
             [ '100x100_200x100.png',           200, 200, 100 ],
             [ '100x100_200x100-fill.png',      200, 200, 100 ],
             [ '100x100_200x100-crop.png',      200, 200, 100 ],

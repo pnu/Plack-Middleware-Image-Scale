@@ -418,7 +418,7 @@ sub image_scale {
 =head1 SYNOPSIS
 
     ## example1.psgi
-    
+
     builder {
         enable 'ConditionalGET';
         enable 'Image::Scale';
@@ -453,9 +453,9 @@ L</CONFIGURATION>.
     ## see example4.psgi
 
     my %imagesize = Config::General->new('imagesize.conf')->getall;
-    
+
     # ...
-    
+
     enable 'Image::Scale', size => \%imagesize;
 
 A request to /images/foo_medium.png will use images/foo.(png|jpg|gif|jpeg) as
@@ -539,7 +539,7 @@ fill the requested image size exactly.
 
 If fill has a value, it specifies the background color to use. Undefined color
 with png output means transparent background.
-    
+
 =head2 flags: crop
 
 Image aspect ratio is preserved by scaling and cropping from middle of the
@@ -559,7 +559,7 @@ See documentation in distribution directory C<doc> for a visual explanation.
 Zoom the original image N percent bigger. For example C<z20> to zoom 20%.
 Zooming applies only to explicitly defined width and/or height, and it does
 not change the crop size.
-    
+
     /images/foo_40x-z20.png
 
 =head1 CAVEATS

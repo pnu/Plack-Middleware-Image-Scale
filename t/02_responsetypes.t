@@ -15,7 +15,7 @@ my $handler = builder {
     enable 'Image::Scale';
     sub {
         my $env = shift;
-        
+
         if ( $env->{PATH_INFO} eq '/simple.png' ) {
             return [
                 200,

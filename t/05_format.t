@@ -31,12 +31,12 @@ test_psgi $handler, sub {
     };
 
     subtest 'Formats' => sub {
-        
+
         my @formats = (
             [ 'jpg to png',  '75x75_x.png',  'image/png' ],
             [ 'jpg to jpg',  '75x75_x.jpg',  'image/jpeg' ],
             [ 'jpg to jpeg', '75x75_x.jpeg', 'image/jpeg' ],
-            
+
             [ 'png to png',  '100x100_x.png',  'image/png' ],
             [ 'png to jpg',  '100x100_x.jpg',  'image/jpeg' ],
             [ 'png to jpeg', '100x100_x.jpeg', 'image/jpeg' ],
@@ -50,7 +50,7 @@ test_psgi $handler, sub {
                 is $res->content_type, $ct, 'Response Content-Type';
             };
         }
-    
+
     };
 };
 
