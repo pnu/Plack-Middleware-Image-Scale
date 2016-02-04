@@ -13,6 +13,8 @@ use Carp;
 
 extends 'Plack::Middleware';
 
+# VERSION
+
 =attr path
 
 Must be a L<RegexpRef|Moose::Util::TypeConstraints/Default_Type_Constraints>,
