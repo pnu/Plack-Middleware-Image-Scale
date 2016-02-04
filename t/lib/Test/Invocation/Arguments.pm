@@ -33,7 +33,8 @@ sub BUILD {
 sub DEMOLISH {
     my $self = shift;
     my $meta = Class::MOP::Class->initialize( $self->class );
-    $meta->add_method( $self->method, $self->method_orig );
+    $meta->add_method( $self->method, $self->method_orig )
+        if defined $self->method_orig;
 }
 
 1;
