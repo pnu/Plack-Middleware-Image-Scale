@@ -209,7 +209,7 @@ sub call {
             $ct = Plack::MIME->mime_type(".$ext");
             Plack::Util::header_set( $res->[1], 'Content-Type', $ct );
         }
-        return $self->body_scaler( $ct, @param, $orig_ct );
+        return $self->body_scaler( $ct, $orig_ct, @param );
     });
 }
 
@@ -317,7 +317,7 @@ options like background fills or cropping.
 =cut
 
 sub image_scale {
-    my ($self, $bufref, $ct, $width, $height, $flags, $orig_ct) = @_;
+    my ($self, $bufref, $ct, $orig_ct, $width, $height, $flags) = @_;
 
     ## $flags can be a HashRef, or it's parsed as a string
     my %flag = 'HASH' eq ref $flags ? %{ $flags } :
@@ -336,7 +336,7 @@ sub image_scale {
     }
 
     my $output;
-    if ($orig_ct eq 'application/pdf') {
+    if (defined $orig_ct and $orig_ct eq 'application/pdf') {
         try {
             Class::Load::load_class('Image::Magick::Thumbnail::PDF');
             Class::Load::load_class('File::Temp');
